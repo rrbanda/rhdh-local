@@ -4,10 +4,74 @@
 includes:
   - dynamic-plugins.default.yaml
 
+
+
 # # Below you can add custom dynamic plugins, including local ones.
 
 # # EXAMPLES:
-# plugins: 
+plugins: 
+  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-mcp-chat:pr_1595__0.1.1!backstage-community-plugin-mcp-chat
+    disabled: false
+    pluginConfig:
+      dynamicPlugins:
+        frontend:
+          backstage-community.plugin-mcp-chat:
+            appIcons:
+              - name: mcpChatIcon
+                importName: MCPChatIcon
+            dynamicRoutes:
+              - path: /mcp-chat
+                importName: McpChatPage
+                menuItem:
+                  icon: mcpChatIcon
+                  text: MCP Chat
+
+  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-mcp-chat-backend:pr_1595__0.4.0!backstage-community-plugin-mcp-chat-backend
+    disabled: false
+
+  - package: oci://quay.io/avik6028/backstage-plugin-knowledge-base-backend:v0.1.1!lucifergene-plugin-knowledge-base-backend
+    disabled: false
+
+  - package: oci://quay.io/avik6028/backstage-plugin-k8s-ai-assistant:v0.1.1!internal-backstage-plugin-k8s-ai-assistant
+    disabled: false
+    pluginConfig:
+      dynamicPlugins:
+        frontend:
+          internal.backstage-plugin-k8s-ai-assistant:
+            appIcons:
+              - name: k8sAiAssistantIcon
+                importName: K8sAiAssistantIcon
+            dynamicRoutes:
+              - path: /k8s-ai-assistant
+                importName: K8SAiAssistantPage
+                menuItem:
+                  icon: k8sAiAssistantIcon
+                  text: K8S Assistant
+
+  - package: oci://quay.io/avik6028/backstage-plugin-k8s-ai-assistant-backend:v0.1.1!internal-backstage-plugin-k8s-ai-assistant-backend
+    disabled: false
+
+  # Tech Explorer Frontend
+  # NOTE: techExplorer configuration is in configs/app-config/app-config.local.yaml
+  # This matches how the standalone plugin works with config at the top level of app-config
+  - package: oci://quay.io/rbrhssa/techx:v0.1.28!backstage-community-plugin-tech-explorer
+    disabled: false
+    pluginConfig:
+      dynamicPlugins:
+        frontend:
+          backstage-community.plugin-tech-explorer:
+            dynamicRoutes:
+              - path: /tech-explorer
+                importName: TechExplorerPage
+                menuItem:
+                  icon: chat
+                  text: Tech Explorer
+
+  # Tech Explorer Backend
+  # NOTE: techExplorer configuration is in configs/app-config/app-config.local.yaml
+  - package: oci://quay.io/rbrhssa/techx:v0.1.28!backstage-community-plugin-tech-explorer-backend
+    disabled: false
+
 # Functioning example using Tech Radar, uncomment to use
   #Tech Radar frontend plugin
   # - package: ./dynamic-plugins/dist/backstage-community-plugin-tech-radar

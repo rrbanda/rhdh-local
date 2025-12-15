@@ -1,0 +1,701 @@
+# Copy this file to app-config.local.yaml to override default app settings.
+# Example with GitHub integration referencing external secrets file.
+
+# integrations:
+#   github:
+#     - host: github.com
+#       apps:
+#         - $include: ../extra-files/github-app-credentials.yaml
+
+app:
+  title: MCP Chat
+  baseUrl: http://localhost:3000
+
+organization:
+  name: 'MCP Chat'
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+  cors:
+    origin: http://localhost:3000
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+  database:
+    client: better-sqlite3
+    connection: ':memory:'
+
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+
+# --------- MCP Chat Configuration ---------
+mcpChat:
+  providers:
+    # Llama Stack (OpenAI-compatible Responses API) - no API key required
+    - id: openai-responses
+      baseUrl: 'https://lss-lss.apps.cluster-nngf2.dynamic.redhatworkshops.io/v1/openai/v1'
+      model: 'gemini/gemini-2.5-flash'
+    # Alternative providers (uncomment and configure as needed)
+    # - id: gemini
+    #   token: ${GEMINI_API_KEY}
+    #   model: gemini-2.5-flash
+    # - id: ollama
+    #   baseUrl: 'http://localhost:11434'
+    #   model: llama3.1:8b
+  mcpServers:
+    # OpenShift MCP Server (HTTP/SSE)
+    - id: openshift-server
+      name: OpenShift MCP Server
+      type: streamable-http
+      url: 'https://openshift-mcp-server-ocp-mcp-server.apps.cluster-nngf2.dynamic.redhatworkshops.io/mcp'
+    # Uncomment to add more MCP servers:
+    # - id: brave-search-server
+    #   name: Brave Search Server
+    #   npxCommand: '@modelcontextprotocol/server-brave-search'
+    #   env:
+    #     BRAVE_API_KEY: ${BRAVE_API_KEY}
+    # - id: kubernetes-server
+    #   name: Kubernetes Server
+    #   npxCommand: 'kubernetes-mcp-server@latest'
+    #   env:
+    #     KUBECONFIG: ${KUBECONFIG}
+  systemPrompt: "You are a helpful assistant. When using tools, provide a clear, readable summary of the results rather than showing raw data. Focus on answering the user's question with the information gathered."
+  quickPrompts:
+    - title: 'Web Search & Research'
+      description: 'Find the latest information, documentation, and best practices'
+      prompt: 'Search for the latest developments in Model Context Protocol and its applications'
+      category: Research
+    - title: 'Kubernetes & Cloud'
+      description: 'Query cloud resources, containers, and deployment status'
+      prompt: 'Show me the current Kubernetes deployments, pods status, and resource utilization in a nicely formatted text with bullet points'
+      category: Infrastructure
+    - title: 'Backstage Insights'
+      description: 'Get insights from Backstage, including catalog entities and documentation'
+      prompt: 'Describe the "example-app" microservice in our Backstage catalog'
+      category: Portals
+# ------------------------------------------------
+
+# --------- Tech Explorer Configuration ---------
+# RAG-powered migration assistant using Llama Stack
+techExplorer:
+  # =============================================================================
+  # BRANDING - Enterprise Customization
+  # =============================================================================
+  # Override these values to apply your organization's branding
+  branding:
+    appName: 'Tech Explorer'
+    tagline: 'Your AI-powered platform assistant'
+    # Brand colors (hex values)
+    primaryColor: '#9333ea'      # Purple - main accent
+    secondaryColor: '#8b5cf6'    # Violet - secondary accent
+    successColor: '#10b981'      # Emerald - success states
+    warningColor: '#f59e0b'      # Amber - warning states
+    errorColor: '#ef4444'        # Red - error states
+    # Optional: Custom logo URL (relative or absolute)
+    # logoUrl: '/branding/logo.svg'
+    # Optional: Custom font family
+    # fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif'
+    # Optional: Disable glassmorphism effects for simpler look
+    enableGlassEffect: true
+
+  # =============================================================================
+  # LLAMA STACK - AI Backend Configuration
+  # =============================================================================
+  llamaStack:
+    baseUrl: 'https://lss-lss.apps.cluster-nngf2.dynamic.redhatworkshops.io'
+    # Multiple vector stores (all are searched automatically)
+    # Backward compatible: 'vectorStoreId' (single) also works
+    vectorStoreIds:
+      - 'vs_c937db92-71d9-43da-885c-113c112d9c55'
+      # Add more vector stores as needed:
+      # - 'vs_security_policies'
+      # - 'vs_api_docs'
+    model: 'gemini/gemini-2.5-flash'
+    # Vector store name for auto-creation (if vectorStoreId not specified)
+    vectorStoreName: 'techx-db'
+    # Embedding model for RAG (used when creating vector store)
+    embeddingModel: 'sentence-transformers/all-MiniLM-L6-v2'
+    embeddingDimension: 384
+    # Chunking configuration
+    chunkingStrategy: 'static'
+    maxChunkSizeTokens: 200
+    chunkOverlapTokens: 50
+    # Skip TLS certificate verification (for self-signed certs in dev/enterprise)
+    # Set to false in production with valid certificates
+    skipTlsVerify: true
+
+  # Safety Guardrails
+  # Reference: https://developers.redhat.com/articles/2025/08/26/implement-ai-safeguards-python-and-llama-stack
+  safety:
+    enabled: true
+    
+    # NOTE: This Llama Stack server doesn't have safety providers (llama-guard, prompt-guard) configured.
+    # Shield registration requires these providers to be set up in the server's run.yaml:
+    #   safety:
+    #     - provider_id: llama-guard
+    #       provider_type: inline::llama-guard
+    #     - provider_id: prompt-guard
+    #       provider_type: inline::prompt-guard
+    #
+    # For now, we use local safety checks only (destructive pattern detection).
+    # To enable Llama Stack safety shields, uncomment and configure after server setup:
+    # registerShields:
+    #   - shieldId: content_safety
+    #     providerId: llama-guard
+    #     providerShieldId: meta-llama/Llama-Guard-3-8B
+    #   - shieldId: prompt_injection
+    #     providerId: prompt-guard
+    #     providerShieldId: Prompt-Guard-86M
+    # inputShields:
+    #   - content_safety
+    #   - prompt_injection
+    # outputShields:
+    #   - content_safety
+    
+    # Local safety: Patterns that trigger confirmation prompts for destructive actions
+    # This works WITHOUT any Llama Stack safety providers
+    destructivePatterns:
+      - delete
+      - remove
+      - destroy
+      - drop
+      - truncate
+      - kill
+      - terminate
+
+  # Response Evaluation - Uses Llama Stack Scoring API
+  # Available scoring functions on this server:
+  #   - braintrust::answer-relevancy (relevancy to input)
+  #   - braintrust::answer-correctness (correctness scoring)
+  #   - braintrust::faithfulness (faithfulness to context)
+  #   - braintrust::context-relevancy (context relevance)
+  #   - braintrust::factuality (factual accuracy)
+  #   - llm-as-judge::base (LLM-based judging)
+  evaluation:
+    # Disabled - scoring functions not available on this Llama Stack server
+    # Enable when server has scoring functions registered (check /v1/scoring-functions)
+    enabled: false
+    # Best scoring functions for RAG quality assessment (when available)
+    scoringFunctions:
+      - 'braintrust::answer-relevancy'    # Is the answer relevant to the question?
+      - 'braintrust::faithfulness'        # Is the answer faithful to the RAG context?
+    # Minimum score threshold (0-1) - below this logs a warning
+    minScoreThreshold: 0.7
+
+  # =============================================================================
+  # DOCUMENT SOURCES FOR RAG INGESTION
+  # =============================================================================
+  # IMPORTANT: Enable only ONE source to avoid duplicate ingestion!
+  # Choose based on your deployment environment:
+  #
+  # For RHDH/Container deployments:
+  #   → Use 'github' source (RECOMMENDED) - no filesystem access needed
+  #   → Or 'url' source - for individual doc URLs
+  #
+  # For Local development:
+  #   → Use 'directory' source - reads from local filesystem
+  # =============================================================================
+  documents:
+    syncMode: full
+    syncSchedule: '1h'  # Re-sync every hour
+    sources:
+      # -------------------------------------------------------------------------
+      # URL Source - Fetches raw markdown files from GitHub
+      # ✅ Container-friendly - no volume mounts needed
+      # ✅ Works reliably - just HTTP GET requests
+      # -------------------------------------------------------------------------
+      - type: url
+        urls:
+          - 'https://raw.githubusercontent.com/rrbanda/backstage-community-plugins/techx/workspaces/mcp-chat/examples/docs/lightspeed-enterprise-guide.md'
+          - 'https://raw.githubusercontent.com/rrbanda/backstage-community-plugins/techx/workspaces/mcp-chat/examples/docs/migration-faq.md'
+          - 'https://raw.githubusercontent.com/rrbanda/backstage-community-plugins/techx/workspaces/mcp-chat/examples/docs/README.md'
+
+      # -------------------------------------------------------------------------
+      # OPTION: GitHub Source (if plugin supports it)
+      # -------------------------------------------------------------------------
+      # - type: github
+      #   repo: 'rrbanda/backstage-community-plugins'
+      #   branch: techx
+      #   path: workspaces/mcp-chat/examples/docs
+      #   patterns:
+      #     - '**/*.md'
+      #   # token: ${GITHUB_TOKEN}  # Uncomment for private repos
+
+      # -------------------------------------------------------------------------
+      # OPTION 3: Directory Source (Local dev only)
+      # ⚠️ Requires volume mount in RHDH/containers
+      # Path is relative to backend plugin directory (plugins/tech-explorer-backend/)
+      # -------------------------------------------------------------------------
+      # - type: directory
+      #   path: ../../examples/docs  # For local dev
+      #   # path: /opt/app-root/src/docs  # For RHDH with volume mount
+      #   patterns:
+      #     - '**/*.md'
+      #     - '**/*.yaml'
+
+  # MCP Servers for tool execution (e.g., OpenShift operations)
+  # Each server can have Human-in-the-Loop (HITL) approval configured
+  mcpServers:
+    - id: openshift-server
+      name: OpenShift MCP Server
+      type: streamable-http
+      url: 'https://openshift-mcp-server-ocp-mcp-server.apps.cluster-nngf2.dynamic.redhatworkshops.io/mcp'
+      # Human-in-the-Loop Configuration
+      # Options:
+      #   'never' - All tools auto-execute (default)
+      #   'always' - All tools require user approval
+      #   { always: [...], never: [...] } - Fine-grained control per tool
+      requireApproval:
+        # Tools that REQUIRE approval before execution (destructive operations)
+        always:
+          - pods_delete
+          - deployments_delete
+          - services_delete
+          - routes_delete
+          - configmaps_delete
+          - secrets_delete
+          - deployments_scale  # Scaling can impact availability
+        # Tools that auto-execute (read-only operations)
+        never:
+          - pods_list
+          - pods_get
+          - pods_logs
+          - deployments_list
+          - deployments_get
+          - services_list
+          - routes_list
+          - namespaces_list
+          - events_list
+  systemPrompt: |
+    You are Tech Explorer, an intelligent AI assistant for the Application Platform. You have two powerful capabilities:
+
+    1. **RAG (Knowledge Base)**: Search and reference uploaded documentation to answer questions accurately.
+    2. **MCP Tools (Actions)**: Execute actions on OpenShift/Kubernetes clusters like creating namespaces, deployments, and more.
+
+    ## Core Behaviors
+
+    **Be Contextually Aware:**
+    - REMEMBER context from the current conversation. If a user mentions namespace "aap", subsequent questions about pods, deployments, or resources should use that namespace automatically.
+    - Track entities mentioned: namespaces, pods, deployments, services, etc. Use the most recently mentioned entity for follow-up questions.
+    - DON'T ask for clarification when context is already established in the conversation.
+
+    **Be Proactive - Execute First, Don't Ask:**
+    - ALWAYS execute the tool first, then provide a helpful response with the results
+    - NEVER say "I can do X, would you like me to?" - just DO it
+    - For read operations (list, get, describe, logs): Execute immediately, then summarize the results
+    - For logs: Fetch the logs, then provide a meaningful summary highlighting errors, warnings, or key events
+    - For listing resources: If a namespace was discussed earlier, use it automatically
+
+    **Ask Only For Destructive Operations:**
+    - Creating/deleting resources: Confirm before executing
+    - Scaling to 0: Confirm before executing
+    - Everything else (viewing, listing, logs, describe): Just do it
+
+    ## Example Conversations
+
+    **Good - Using Conversation Context:**
+    User: "Is there a namespace aap?"
+    You: [Execute namespaces_list tool] "Yes, namespace 'aap' exists and is Active."
+    User: "What pods are there?"
+    You: [Execute pods_list for namespace 'aap'] "Here are the pods in namespace 'aap': ..." 
+    (NOTE: You used 'aap' because it was just discussed - DO NOT ask "which namespace?")
+
+    **Good - No Prior Context:**
+    User: "Show me all pods"
+    You: [Execute pods_list across all namespaces] "Here are the pods across the cluster: ..."
+    (NOTE: List all since no specific namespace was mentioned)
+
+    **Good - Summarizing Logs:**
+    User: "Summarize logs for pod my-app-xyz"
+    You: [Execute pods_logs tool] "Here's a summary of the logs for my-app-xyz:
+    - The pod started successfully at 10:32 AM
+    - ⚠️ Warning: 3 connection timeouts to database at 10:45 AM
+    - Application is processing requests normally since 10:50 AM
+    - No errors in the last hour"
+    (NOTE: Fetch logs first, THEN provide a meaningful summary - don't ask permission)
+
+    ## Response Format
+    - Be direct and concise - avoid lengthy preambles
+    - For resource lists (pods, deployments):
+      - Use a SIMPLE markdown table with 3-4 columns max: NAME | STATUS | AGE | NAMESPACE
+      - Do NOT include long fields like labels, IP addresses, or node names in tables
+      - If there are issues (CrashLoopBackOff, Error, ImagePullBackOff), highlight them with ⚠️
+    - Example pod list format:
+      | NAME | STATUS | RESTARTS | AGE |
+      |------|--------|----------|-----|
+      | my-pod-abc123 | Running | 0 | 2d |
+      | failing-pod-xyz | ⚠️ CrashLoopBackOff | 15 | 1h |
+    - Keep responses readable - quality over quantity
+  # Swim lanes - Grouped actions for app developers
+  # Each swim lane has a title, description, icon, color, and list of cards
+  swimLanes:
+    - id: new-developer
+      title: 'New Developer Onboarding'
+      description: 'Your first steps to deploy apps on OpenShift'
+      icon: 'rocket'
+      color: '#10b981'  # Green - growth/start
+      cards:
+        - title: 'Deploy from Git'
+          description: 'Deploy your app directly from GitHub/GitLab'
+          prompt: 'I want to deploy my application from a Git repository. Ask me for the repo URL and help me set up the deployment.'
+          icon: 'git'
+        - title: 'My First Build'
+          description: 'Create and run your first container build'
+          prompt: 'I want to build my first container image on OpenShift. Walk me through the build process step by step.'
+          icon: 'build'
+        - title: 'Add Environment Vars'
+          description: 'Configure secrets and config maps'
+          prompt: 'I need to add environment variables to my deployment. Help me configure secrets or configmaps.'
+          icon: 'config'
+        - title: 'Expose My App'
+          description: 'Make your app accessible via URL'
+          prompt: 'I want to expose my application publicly. Help me create a Route with the right configuration.'
+          icon: 'globe'
+        - title: 'View My Apps'
+          description: 'See all your running deployments'
+          prompt: 'List all deployments in my namespace and show their status, replicas, and health.'
+          icon: 'apps'
+
+    - id: app-migration
+      title: 'Application Migration'
+      description: 'Bring your existing apps to OpenShift'
+      icon: 'migration'
+      color: '#8b5cf6'  # Purple - transformation
+      cards:
+        - title: 'Assess My App'
+          description: 'Analyze your app for container readiness'
+          prompt: 'I want to migrate my existing application to OpenShift. Help me assess what changes I need to make. Ask me about my current stack.'
+          icon: 'search'
+        - title: 'Containerize My App'
+          description: 'Create Dockerfile and build configs'
+          prompt: 'Help me containerize my application. I need guidance on creating a Dockerfile and OpenShift build configuration.'
+          icon: 'build'
+        - title: 'Migrate Database'
+          description: 'Move your data to cloud-native databases'
+          prompt: 'I need to migrate my database to OpenShift. What are my options for PostgreSQL, MySQL, or MongoDB?'
+          icon: 'database'
+        - title: 'Configure Networking'
+          description: 'Set up routes, services, and ingress'
+          prompt: 'My migrated app needs networking configured. Help me set up Services, Routes, and any ingress requirements.'
+          icon: 'network'
+
+    - id: developer-day-to-day
+      title: 'Developer Essentials'
+      description: 'Manage, monitor, and troubleshoot your apps'
+      icon: 'code'
+      color: '#f59e0b'  # Amber - daily work
+      cards:
+        - title: 'View App Logs'
+          description: 'Check what your application is doing'
+          prompt: 'Show me the logs for my application. Ask me which pod or deployment I want to see logs for.'
+          icon: 'logs'
+        - title: 'Debug Issues'
+          description: 'Fix CrashLoopBackOff and restart issues'
+          prompt: 'My pod keeps crashing and restarting. Help me diagnose the CrashLoopBackOff issue.'
+          icon: 'bug'
+        - title: 'Check Resources'
+          description: 'Monitor CPU, memory, and quotas'
+          prompt: 'Show me my namespace resource quotas and current usage. How much CPU, memory, and storage do I have left?'
+          icon: 'monitor'
+        - title: 'Pod Events'
+          description: 'Understand what Kubernetes is telling you'
+          prompt: 'Show me the recent events for my pods. I want to understand what is happening with my deployment.'
+          icon: 'events'
+        - title: 'Scale My App'
+          description: 'Adjust replicas for your workload'
+          prompt: 'I need to scale my deployment. Ask me which deployment and how many replicas I want.'
+          icon: 'scale'
+        - title: 'Auto-Scaling'
+          description: 'Configure HPA for automatic scaling'
+          prompt: 'Help me set up Horizontal Pod Autoscaler for my deployment.'
+          icon: 'speed'
+          comingSoon: true
+        - title: 'Cost Analysis'
+          description: 'Analyze resource costs and optimization'
+          prompt: 'Show me resource usage and cost optimization suggestions.'
+          icon: 'monitor'
+          comingSoon: true
+          comingSoonLabel: 'Q2 2025'
+
+  # Legacy quickPrompts - kept for backwards compatibility
+  quickPrompts:
+    - title: 'Deploy from Git'
+      description: 'Deploy app directly from GitHub/GitLab'
+      prompt: 'I want to deploy my application from a Git repository. Ask me for the repo URL and help me set up the deployment.'
+      category: Deploy
+
+  # Workflows - Multi-step guided experiences for App Developers
+  # Categories: Deploy (New Developer Onboarding), Migrate (Application Migration), Daily (Daily Developer Tasks)
+  workflows:
+    # ===== NEW DEVELOPER ONBOARDING =====
+    - id: deploy-first-app
+      name: 'Deploy My App'
+      description: 'Get your application running on OpenShift'
+      icon: 'rocket'
+      category: Deploy
+      steps:
+        - title: 'Connect Git Repo'
+          prompt: 'I want to deploy my application from Git. Ask me for my repository URL and branch.'
+          description: 'Link your source code'
+        - title: 'Configure Build'
+          prompt: 'Help me configure the build settings. What base image and build strategy should I use?'
+          description: 'Set up build configuration'
+        - title: 'Deploy & Verify'
+          prompt: 'Deploy my application and show me how to verify it is running correctly.'
+          description: 'Launch and validate'
+
+    - id: add-database
+      name: 'Add Database'
+      description: 'Set up PostgreSQL or MySQL for your app'
+      icon: 'cloud'
+      category: Deploy
+      steps:
+        - title: 'Choose Database'
+          prompt: 'I need a database for my application. What options are available (PostgreSQL, MySQL, MongoDB)? Help me choose.'
+          description: 'Select database type'
+        - title: 'Deploy Database'
+          prompt: 'Deploy the database in my namespace with appropriate resource requests.'
+          description: 'Create database instance'
+        - title: 'Connect App'
+          prompt: 'Update my application deployment to connect to the new database using the secret.'
+          description: 'Link app to database'
+
+    - id: add-config
+      name: 'Add Config'
+      description: 'Set up environment variables & secrets'
+      icon: 'config'
+      category: Deploy
+      steps:
+        - title: 'Add Config'
+          prompt: 'I need to configure my application with environment variables. Help me create ConfigMaps or Secrets and attach them to my deployment.'
+          description: 'Configure app settings'
+
+    # ===== APPLICATION MIGRATION =====
+    # Migration Types (by complexity)
+    - id: migrate-type-a
+      name: 'Type A'
+      description: 'Container-ready apps (minimal changes)'
+      icon: 'rocket'
+      category: Migrate
+      comingSoon: false
+      steps:
+        - title: 'Migrate Type A'
+          prompt: 'I have a container-ready application (Type A) that requires minimal changes to run on OpenShift. Help me deploy it. Ask me about my container image or Dockerfile.'
+          description: 'Deploy container-ready app'
+
+    - id: migrate-type-b
+      name: 'Type B'
+      description: 'Apps needing containerization'
+      icon: 'build'
+      category: Migrate
+      comingSoon: true
+      steps:
+        - title: 'Migrate Type B'
+          prompt: 'I have an application (Type B) that needs to be containerized before running on OpenShift. Help me assess my app, create a Dockerfile, and deploy it. Ask me about my tech stack.'
+          description: 'Containerize and deploy'
+
+    - id: migrate-type-c
+      name: 'Type C'
+      description: 'Complex apps needing refactoring'
+      icon: 'settings'
+      category: Migrate
+      comingSoon: true
+      steps:
+        - title: 'Migrate Type C'
+          prompt: 'I have a complex application (Type C) that requires refactoring to run on OpenShift. Help me analyze dependencies, plan the migration strategy, and break it into microservices if needed. Ask me about my current architecture.'
+          description: 'Refactor and migrate'
+
+    # Tech-specific migrations
+    - id: migrate-java
+      name: 'Java / Spring Boot'
+      description: 'Migrate Java or Spring Boot apps'
+      icon: 'java'
+      category: Migrate
+      steps:
+        - title: 'Migrate Java'
+          prompt: 'I have a Java/Spring Boot application I want to migrate to OpenShift. Help me assess what changes are needed, create a Dockerfile, and deploy it.'
+          description: 'Migrate Java app'
+
+    - id: migrate-nodejs
+      name: 'Node.js'
+      description: 'Migrate Node.js applications'
+      icon: 'code'
+      category: Migrate
+      steps:
+        - title: 'Migrate Node.js'
+          prompt: 'I have a Node.js application I want to migrate to OpenShift. Help me containerize and deploy it.'
+          description: 'Migrate Node app'
+
+    - id: migrate-python
+      name: 'Python'
+      description: 'Migrate Python/Django/Flask apps'
+      icon: 'python'
+      category: Migrate
+      steps:
+        - title: 'Migrate Python'
+          prompt: 'I have a Python application (Django/Flask) I want to migrate to OpenShift. Help me containerize and deploy it.'
+          description: 'Migrate Python app'
+
+    # ===== DAILY DEVELOPER TASKS =====
+    - id: view-logs
+      name: 'View App Logs'
+      description: 'Check what your application is doing'
+      icon: 'logs'
+      category: Daily
+      steps:
+        - title: 'Get Logs'
+          prompt: 'Show me the recent logs for my application. Ask me which pod or deployment.'
+          description: 'View application output'
+
+    - id: debug-app
+      name: 'Debug Issues'
+      description: 'Troubleshoot application problems'
+      icon: 'bug'
+      category: Daily
+      steps:
+        - title: 'Check Status'
+          prompt: 'Show me the status of all my pods and deployments. Are there any errors or warnings?'
+          description: 'Review current state'
+        - title: 'Analyze Logs'
+          prompt: 'Show me the application logs and look for errors or exceptions.'
+          description: 'Find the issue'
+        - title: 'Get Fix'
+          prompt: 'Based on what you found, what should I fix? Give me specific commands.'
+          description: 'Apply the solution'
+
+    - id: scale-app
+      name: 'Scale My App'
+      description: 'Add or remove replicas'
+      icon: 'scale'
+      category: Daily
+      steps:
+        - title: 'Scale'
+          prompt: 'I want to scale my deployment. Ask me which deployment and how many replicas I need.'
+          description: 'Adjust replica count'
+
+    - id: update-app
+      name: 'Update My App'
+      description: 'Deploy a new version'
+      icon: 'refresh'
+      category: Daily
+      steps:
+        - title: 'Trigger Build'
+          prompt: 'I want to update my application with the latest code. Help me trigger a new build and deployment.'
+          description: 'Deploy new version'
+
+    - id: check-resources
+      name: 'Check Resources'
+      description: 'Monitor CPU, memory, quotas'
+      icon: 'monitor'
+      category: Daily
+      steps:
+        - title: 'View Resources'
+          prompt: 'Show me my namespace resource quotas and current usage. How much CPU and memory do I have left?'
+          description: 'Check resource usage'
+
+    - id: view-events
+      name: 'Pod Events'
+      description: 'See what Kubernetes is telling you'
+      icon: 'events'
+      category: Daily
+      steps:
+        - title: 'View Events'
+          prompt: 'Show me recent events for my pods. I want to understand what is happening with my deployment.'
+          description: 'Check pod events'
+
+    - id: rollback-app
+      name: 'Rollback'
+      description: 'Revert to previous version'
+      icon: 'undo'
+      category: Daily
+      steps:
+        - title: 'Rollback'
+          prompt: 'I need to rollback my deployment to the previous version. Show me the rollout history and help me revert.'
+          description: 'Revert deployment'
+# ------------------------------------------------
+
+# --------- Knowledge Base Configuration ---------
+# Using Llama Stack (OpenAI-compatible RAG with built-in vector store)
+# Llama Stack handles embeddings and vector storage automatically
+#
+knowledgeBase:
+  llamastack:
+    baseUrl: 'https://lss-lss.apps.cluster-nngf2.dynamic.redhatworkshops.io'
+    vectorStoreId: 'vs_c937db92-71d9-43da-885c-113c112d9c55'
+    model: 'gemini/gemini-2.5-flash'
+    chunkingStrategy: 'static'
+    maxChunkSizeTokens: 200
+    chunkOverlapTokens: 50
+#
+# Alternative: Traditional embedding provider + vector store (Pinecone/ChromaDB)
+# Comment out llamastack above and uncomment below to use:
+#
+# knowledgeBase:
+#   embeddingProviders:
+#     - id: gemini
+#       token: ${GEMINI_API_KEY}
+#       model: gemini-embedding-001
+#       dimensions: 3072
+#   vectorStores:
+#     - id: pinecone
+#       apiKey: ${PINECONE_API_KEY}
+#       indexName: k8s-knowledge-base
+# ------------------------------------------------
+
+proxy:
+
+techdocs:
+  builder: 'local'
+  generator:
+    runIn: 'docker'
+  publisher:
+    type: 'local'
+
+auth:
+  providers:
+    guest: {}
+
+scaffolder:
+
+catalog:
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Resource, Location]
+  locations:
+    # Local examples with Kubernetes annotations
+    - type: file
+      target: ./examples/entities.yaml
+    - type: file
+      target: ./examples/template/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ./examples/org.yaml
+      rules:
+        - allow: [User, Group]
+
+# --------- Kubernetes/OpenShift Configuration ---------
+# Required for "Select Pod" dropdown and K8s resource discovery
+# Set OPENSHIFT_TOKEN via: export OPENSHIFT_TOKEN=$(oc whoami -t)
+kubernetes:
+  serviceLocatorMethod:
+    type: 'multiTenant'
+  clusterLocatorMethods:
+    - type: 'config'
+      clusters:
+        - name: openshift-nngf2
+          url: https://api.cluster-nngf2.dynamic.redhatworkshops.io:6443
+          authProvider: 'serviceAccount'
+          serviceAccountToken: ${OPENSHIFT_TOKEN}
+          skipTLSVerify: true
+# ------------------------------------------------
+
+permission:
+  enabled: false
